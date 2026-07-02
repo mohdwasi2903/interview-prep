@@ -9,6 +9,11 @@ Use @ConditionalOnProperty when bean selection depends on a config value,
 @ConditionalOnMissingBean when you want a default fallback bean, 
 and @Qualifier when multiple beans exist and you need one specific implementation.
 
+ApplicationContext vs BeanFactory
+BeanFactory is the basic Spring container, while ApplicationContext is the richer and more commonly used 
+one with features like events, internationalization, annotation support, and better Spring Boot integration. 
+In real projects, ApplicationContext is preferred almost always.
+
 public interface PaymentService {
     String pay(double amount);
 }
@@ -42,6 +47,8 @@ public class MockPaymentService implements PaymentService {
     }
 }
 
+spring.profiles.active = prod
+
 @Service
 @Profile("prod")
 public class RazorpayPaymentService implements PaymentService {
@@ -50,14 +57,14 @@ public class RazorpayPaymentService implements PaymentService {
     }
 }
 
-@Service
+@Service("razorPaymentService")
 public class RazorpayPaymentService implements PaymentService {
     public String pay(double amount) {
         return "Paid " + amount + " using Razorpay";
     }
 }
 
-@Service
+@Service("stripePaymentService")
 public class StripePaymentService implements PaymentService {
     public String pay(double amount) {
         return "Paid " + amount + " using Razorpay";
@@ -65,3 +72,35 @@ public class StripePaymentService implements PaymentService {
 }
 
 @Controller
+@RequestMapping("/payments")
+public class PaymentController {
+
+    private PaymentService paymentService;
+
+    public PaymentController(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+
+    @PostMapping("/pay") 
+    public String pay(@RequestParam double amount) {
+        return paymentService.pay(amount);
+    }
+    
+}
+
+@RestController
+@RequestMapping("/stripe-payments")
+public class StripePaymentController {
+
+    private PaymentService paymentService;
+
+    public StripePaymentController(@Qualifier("stripePaymentService")PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+
+    @PostMapping("/pay") 
+    public String pay(@RequestParam double amount) {
+        return paymentService.pay(amount);
+    }
+
+}
