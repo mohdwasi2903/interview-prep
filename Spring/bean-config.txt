@@ -1,0 +1,67 @@
+Bean injection
+Spring Dependency Injection means Spring creates and wires objects for you instead of you calling new everywhere.
+Constructor injection is preferred for required dependencies, setter injection is useful for optional 
+dependencies, and field injection is usually avoided in production because it hides dependencies.
+
+Conditional beans
+Use @ConditionalOnProperty when bean selection depends on a config value, 
+@Profile when it depends on environment, 
+@ConditionalOnMissingBean when you want a default fallback bean, 
+and @Qualifier when multiple beans exist and you need one specific implementation.
+
+public interface PaymentService {
+    String pay(double amount);
+}
+
+Property Based Injection
+@Configuration
+public class PaymentConfig {
+
+    @Bean
+    @ConditionalOnProperty(name="payment.gateway" havingValue="razorpay")
+    public PaymentService razorpayPaymentService() {
+        return new RazorpayPaymentService();
+    }
+
+    @Bean
+    @ConditionalOnProperty(name="payment.gateway", havingValue="stripe")
+    public PaymentService stripePaymentService() {
+        return new StripePaymentService();
+    }
+} 
+
+text
+payment.gateway=razorpay
+
+Profile Based Selection
+@Service
+@Profile("dev")
+public class MockPaymentService implements PaymentService {
+    public String pay(double amount) {
+        retun "Mock payment done : "+amount+10;
+    }
+}
+
+@Service
+@Profile("prod")
+public class RazorpayPaymentService implements PaymentService {
+    public String pay(double amount) {
+        return "Paid " + amount + " using Razorpay";
+    }
+}
+
+@Service
+public class RazorpayPaymentService implements PaymentService {
+    public String pay(double amount) {
+        return "Paid " + amount + " using Razorpay";
+    }
+}
+
+@Service
+public class StripePaymentService implements PaymentService {
+    public String pay(double amount) {
+        return "Paid " + amount + " using Razorpay";
+    }
+}
+
+@Controller
