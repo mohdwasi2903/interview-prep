@@ -1,0 +1,216 @@
+Multithreading in Java
+Multithreading means running multiple tasks concurrently within the same process. 
+In Java, each thread is a lightweight unit of execution, and the JVM schedules these threads so the CPU 
+can work on more than one task at a time.
+
+class Task implements Runnable {
+    private final String name;
+
+    Task(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public void run() {
+        System.out.println(name + " started by " + Thread.currentThread().getName());
+    }
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        Thread t1 = new Thread(new Task("Order Processing"));
+        Thread t2 = new Thread(new Task("Email Notification"));
+
+        t1.start();
+        t2.start();
+    }
+}
+
+---------------------------------
+
+// Online Java Compiler
+// Use this editor to write, compile and run your Java code online
+class Counter {
+    int count;
+    String name;
+    public Counter(int count, String name) {
+        this.count = count;
+        this.name = name;
+    }
+}
+
+class Main {
+    public static void main(String[] args) {
+        Counter counter = new Counter(0,"th");
+        
+        Runnable job = () -> {
+            for(int i=1;i<10;i++) {
+                System.out.println(Thread.currentThread().getName() +", "+counter.count++);
+            }
+        };
+        
+        Thread t1 = new Thread(job);
+        Thread t2 = new Thread(job);
+        
+        t1.start();
+        t2.start();
+    }
+}
+
+------------------------------------------------
+
+Multi threading synchronization
+
+// Online Java Compiler
+// Use this editor to write, compile and run your Java code online
+class Counter {
+    int count = 0;
+    
+    public synchronized void setCounter() {
+        System.out.println(Thread.currentThread().getName());
+        count++;
+    }
+    
+    public synchronized int getCounter() {
+        return count;
+    }
+}
+
+class Main {
+    public static void main(String[] args) throws  InterruptedException {
+        Counter counter = new Counter();
+        
+        Runnable job = () -> {
+            for(int i=1;i<10;i++) {
+                counter.setCounter();
+            }
+            System.out.println(counter.getCounter());
+        };
+        
+        Thread t1 = new Thread(job);
+        Thread t2 = new Thread(job);
+        
+        t1.start();
+        t2.start();
+        
+        t1.join();
+        t2.join(); // join() ensures the main thread waits for all worker threads to finish.
+    }
+}
+
+ExecutorService is a high-level API for managing and reusing threads through a pool instead of creating 
+raw threads manually.
+
+Executor Thread
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class ExecutorDemo {
+    public static void main(String[] args) {
+        ExecutorService executor = Executors.newFixedThreadPool(3);
+
+        for (int i = 1; i <= 5; i++) {
+            int taskNo = i;
+            executor.submit(() ->
+                System.out.println("Task " + taskNo + " executed by " + Thread.currentThread().getName())
+            );
+        }
+
+        executor.shutdown();
+    }
+}
+
+ThreadPoolExecutor vs ScheduledThreadPoolExecutor
+ThreadPoolExecutor is the general-purpose implementation behind most executor-based thread pools. 
+It lets you control core pool size, max pool size, queue behavior, and rejection policy.
+
+ScheduledThreadPoolExecutor is a specialized executor for delayed or periodic tasks, such as scheduled 
+refresh jobs or cron-like background work.
+
+ThreadPoolExecutor
+Use it when you want to execute tasks immediately, in parallel, and manage throughput under load.
+
+import java.util.concurrent.*;
+
+public class PoolDemo {
+    public static void main(String[] args) {
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+            2, 4, 60, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(100)
+        );
+
+        executor.execute(() -> System.out.println("Immediate task"));
+        executor.shutdown();
+    }
+}
+
+ScheduledThreadPoolExecutor
+Use it when tasks should run later or repeatedly.
+
+import java.util.concurrent.*;
+
+public class ScheduleDemo {
+    public static void main(String[] args) {
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(2);
+
+        executor.schedule(() ->
+            System.out.println("Runs after 5 seconds"),
+            5, TimeUnit.SECONDS
+        );
+
+        executor.scheduleAtFixedRate(() ->
+            System.out.println("Runs every 10 seconds"),
+            0, 10, TimeUnit.SECONDS
+        );
+    }
+}
+
+| Feature       | ThreadPoolExecutor                                 | ScheduledThreadPoolExecutor                     |
+| ------------- | -------------------------------------------------- | ----------------------------------------------- |
+| Purpose       | General task execution                             | Delayed or periodic task execution  
+            |
+| Timing        | Immediate                                          | Scheduled in future or repeated   
+              |
+| Best use      | Web requests, background processing, parallel jobs | Cache refresh, cleanup, polling, cron-like jobs |
+
+| Base behavior | Queue + worker threads                             | Time-based scheduling on top of pooling         |
+
+Real-world backend example
+In a Spring Boot trading or order-processing system:
+
+ExecutorService can handle parallel validations or async notification jobs.
+
+ThreadPoolExecutor can process incoming jobs from a queue.
+
+ScheduledThreadPoolExecutor can refresh caches, poll external services, or clean stale records.
+
+Synchronization is needed if multiple threads update shared portfolio totals or order state.
+
+volatile ensures visibility, not atomicity. If one thread updates a volatile variable, other threads 
+see the latest value immediately, but operations like count++ are still not safe because they are 
+read-modify-write sequences.
+
+AtomicInteger provides atomic operations without explicit synchronization for common numeric updates.
+
+Lock gives more control than synchronized, such as timeout, interruptible lock acquisition, 
+and explicit unlock.
+
+How to choose
+Use volatile for visibility of simple state.
+
+Use AtomicInteger for thread-safe counters and simple atomic updates.
+
+Use Lock when you need advanced locking features or more flexible control.
+
+Use synchronized when you want simpler, built-in mutual exclusion.
+
+Spring Boot example using @Async and thread pools
+In Spring Boot, @Async runs work in a separate thread managed by a configured executor. 
+This is useful for email sending, notification delivery, report generation, and other tasks that should 
+not block the request thread.
+
+What @Async actually does
+@Async tells Spring to run a method on a separate thread instead of the caller thread.
+
+In a normal method call, execution is synchronous: one step finishes before the next begins. 
+With @Async, Spring sends the method to a thread pool, so the caller can continue immediately
